@@ -1,18 +1,3 @@
-Aqui está um modelo de README.md completo e profissional para o seu projeto. Este arquivo é a "porta de entrada" do seu projeto no GitHub. Ele explica o que é o projeto, quais são seus recursos e, o mais importante, como outras pessoas podem configurá-lo e executá-lo.
-
-Como Usar
-No seu projeto no IntelliJ, clique com o botão direito na pasta raiz.
-
-Vá em New > File.
-
-Dê o nome de README.md (o .md é importante).
-
-Copie e cole o texto abaixo dentro desse novo arquivo.
-
-Importante: Na seção "Demo", você precisará tirar um screenshot do seu jogo e substituir o link de exemplo.
-
-(Copie a partir daqui)
-
 🎮 Gemini Tetris (Java Swing & MySQL)
 Este é um clone completo do clássico jogo Tetris, construído do zero em Java puro, usando a biblioteca Swing para a interface gráfica. O projeto vai além de um simples clone, incorporando uma arquitetura de gerenciamento de estado (GameManager), integração total com um banco de dados MySQL e uma série de funcionalidades modernas.
 

@@ -1,4 +1,4 @@
-🎮 Gemini Tetris (Java Swing & MySQL)
+🎮 Tetris (Java Swing & MySQL)
 Este é um clone completo do clássico jogo Tetris, construído do zero em Java puro, usando a biblioteca Swing para a interface gráfica. O projeto vai além de um simples clone, incorporando uma arquitetura de gerenciamento de estado (GameManager), integração total com um banco de dados MySQL e uma série de funcionalidades modernas.
 
 O jogo inclui modos 1P e 2P, rankings globais persistentes, um sistema de salvar/carregar jogo, e um alto nível de personalização de áudio e visual.

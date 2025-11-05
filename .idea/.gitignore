@@ -1,0 +1,19 @@
+# Arquivos compilados do Java
+*.class
+
+# Pasta de output do IntelliJ
+out/
+
+# Arquivos de configuração do IntelliJ
+.idea/
+*.iml
+
+# Arquivos de log
+*.log
+
+# Arquivos de sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivo do banco de dados local
+*.db

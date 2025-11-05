@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="KotlinJavaRuntime" type="repository">
+    <properties maven-id="org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.21" />
+    <ANNOTATIONS>
+      <root url="file://$USER_HOME$/Downloads/mysql-connector-j-9.5.0/mysql-connector-j-9.5.0" />
+    </ANNOTATIONS>
+    <CLASSES />
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,13 +1,10 @@
 // Em ScorePanel.java
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Font;
 import java.awt.Component;
-import java.awt.event.ActionListener;
 
 public class ScorePanel extends JPanel {
     private static final int TILE_SIZE = 20;
@@ -19,14 +16,27 @@ public class ScorePanel extends JPanel {
     // Campos da UI
     private JLabel scoreLabel, levelLabel, linesLabel, themeLabel, audioLabel, nextLabel;
     private JPanel nextPiecePanel;
-    private JButton pauseButton, restartButton, backToMenuButton, editCustomThemeButton;
-    private ColorEditorDialog colorEditorDialog;
-    private JComboBox<String> musicSelector;
-    private JSlider volumeSlider;
-    private JButton muteButton;
+
+    // Botões
+    private JButton pauseButton;
+    private JButton restartButton;
+    private JButton backToMenuButton;
+    private JButton editCustomThemeButton;
     private JButton saveGameButton;
     private JButton toggleThemeButton;
+    private JButton muteButton;
+
+    // Controles de Som/Tema
+    private JComboBox<String> musicSelector;
+    private JSlider volumeSlider;
     private JComboBox<String> themeSelector;
+
+    // --- HOLD ---
+    private JLabel holdLabel;
+    private JPanel holdPiecePanel;
+
+    // Dialogo de cor
+    private ColorEditorDialog colorEditorDialog;
 
     public ScorePanel(GameEngine engine, ThemeManager themeManager, GameManager gameManager) {
         this.engine = engine;
@@ -34,7 +44,7 @@ public class ScorePanel extends JPanel {
         this.gameManager = gameManager;
 
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setPreferredSize(new Dimension(200, 600));
+        setPreferredSize(new Dimension(200, 650));
 
         initializeComponents();
     }
@@ -43,17 +53,22 @@ public class ScorePanel extends JPanel {
         Font font = new Font("Arial", Font.BOLD, 18);
         Font smallFont = new Font("Arial", Font.PLAIN, 14);
 
+        // --- Labels de Status ---
         scoreLabel = new JLabel("Pontos: 0");
         scoreLabel.setFont(font);
         add(scoreLabel);
+
         levelLabel = new JLabel("Nível: 1");
         levelLabel.setFont(font);
         add(levelLabel);
+
         linesLabel = new JLabel("Linhas: 0");
         linesLabel.setFont(font);
         add(linesLabel);
 
         add(Box.createRigidArea(new Dimension(0, 10)));
+
+        // --- Temas ---
         themeLabel = new JLabel("Tema:");
         themeLabel.setFont(smallFont);
         add(themeLabel);
@@ -64,13 +79,8 @@ public class ScorePanel extends JPanel {
         themeSelector.addActionListener(e -> {
             String selected = (String) themeSelector.getSelectedItem();
             themeManager.setCurrentTheme(selected);
-            // Atualiza os dois painéis de jogo se eles existirem
-            if (gameManager.getPlayer1Engine() != null && gameManager.getPlayer1Engine().getGamePanel() != null) {
-                gameManager.getPlayer1Engine().getGamePanel().repaint();
-            }
-            if (gameManager.getPlayer2Engine() != null && gameManager.getPlayer2Engine().getGamePanel() != null) {
-                gameManager.getPlayer2Engine().getGamePanel().repaint();
-            }
+            if (gameManager.getPlayer1Engine() != null && gameManager.getPlayer1Engine().getGamePanel() != null) gameManager.getPlayer1Engine().getGamePanel().repaint();
+            if (gameManager.getPlayer2Engine() != null && gameManager.getPlayer2Engine().getGamePanel() != null) gameManager.getPlayer2Engine().getGamePanel().repaint();
         });
         add(themeSelector);
 
@@ -79,10 +89,12 @@ public class ScorePanel extends JPanel {
         editCustomThemeButton.addActionListener(e -> openColorEditor());
         add(editCustomThemeButton);
 
+        // --- Áudio ---
         add(Box.createRigidArea(new Dimension(0, 10)));
-        audioLabel = new JLabel("Controles de Áudio:");
+        audioLabel = new JLabel("Áudio:");
         audioLabel.setFont(smallFont);
         add(audioLabel);
+
         musicSelector = new JComboBox<>(gameManager.getSoundManager().getTrackList());
         musicSelector.setFocusable(false);
         musicSelector.addActionListener(e -> {
@@ -106,15 +118,26 @@ public class ScorePanel extends JPanel {
         muteButton.addActionListener(e -> {
             boolean isNowMuted = gameManager.getSoundManager().toggleMute();
             muteButton.setText(isNowMuted ? "Desmutar" : "Mutar");
-            if (isNowMuted) {
-                volumeSlider.setValue(0);
-            } else {
-                volumeSlider.setValue((int)(gameManager.getSoundManager().getVolume() * 100));
-            }
+            if (isNowMuted) volumeSlider.setValue(0);
+            else volumeSlider.setValue((int)(gameManager.getSoundManager().getVolume() * 100));
         });
         add(muteButton);
 
         add(Box.createRigidArea(new Dimension(0, 10)));
+
+        // --- HOLD PIECE ---
+        holdLabel = new JLabel("Peça Guardada (C/E):");
+        holdLabel.setFont(smallFont);
+        add(holdLabel);
+        holdPiecePanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) { super.paintComponent(g); drawHeldPiece(g); }
+        };
+        holdPiecePanel.setPreferredSize(new Dimension(100, 80));
+        holdPiecePanel.setBackground(Color.BLACK);
+        add(holdPiecePanel);
+
+        // --- NEXT PIECE ---
         nextLabel = new JLabel("Próxima Peça:");
         nextLabel.setFont(smallFont);
         add(nextLabel);
@@ -122,12 +145,13 @@ public class ScorePanel extends JPanel {
             @Override
             protected void paintComponent(Graphics g) { super.paintComponent(g); drawNextPiece(g); }
         };
-        nextPiecePanel.setPreferredSize(new Dimension(100, 100));
+        nextPiecePanel.setPreferredSize(new Dimension(100, 80));
         nextPiecePanel.setBackground(Color.BLACK);
         add(nextPiecePanel);
 
         add(Box.createVerticalGlue());
 
+        // --- BOTOES DE AÇÃO ---
         toggleThemeButton = new JButton("Modo Claro/Escuro");
         styleButton(toggleThemeButton);
         toggleThemeButton.addActionListener(e -> gameManager.toggleUIMode());
@@ -159,18 +183,9 @@ public class ScorePanel extends JPanel {
     }
 
     private void styleButton(JButton button) {
-        Font buttonFont = new Font("Arial", Font.BOLD, 14);
-        button.setFont(buttonFont);
-        button.setBackground(new Color(0, 180, 0));
-        button.setForeground(Color.WHITE);
-        button.setOpaque(true);
-        button.setBorderPainted(false);
-        button.setFocusable(false);
-        Dimension size = new Dimension(180, 30);
-        button.setPreferredSize(size);
-        button.setMaximumSize(size);
-        button.setMinimumSize(size);
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
+        button.setMaximumSize(new Dimension(180, 30));
+        button.setFocusable(false);
     }
 
     public void updateThemeColors(ThemeManager tm) {
@@ -178,13 +193,13 @@ public class ScorePanel extends JPanel {
         Color fg = tm.getPanelForeground();
 
         setBackground(bg);
-
         scoreLabel.setForeground(fg);
         levelLabel.setForeground(fg);
         linesLabel.setForeground(fg);
         themeLabel.setForeground(fg);
         audioLabel.setForeground(fg);
         nextLabel.setForeground(fg);
+        holdLabel.setForeground(fg);
 
         themeSelector.setForeground(fg);
         themeSelector.setBackground(bg);
@@ -196,12 +211,7 @@ public class ScorePanel extends JPanel {
     }
 
     private void saveGame() {
-        if (!engine.isPaused()) {
-            engine.togglePause();
-        }
-        String saveName = (String)JOptionPane.showInputDialog(
-                this, "Digite um nome para o seu jogo salvo:",
-                "Salvar Jogo", JOptionPane.PLAIN_MESSAGE, null, null, "Meu Jogo" );
+        String saveName = JOptionPane.showInputDialog(this, "Nome do Save:", "Salvar Jogo", JOptionPane.PLAIN_MESSAGE);
         if (saveName != null && !saveName.trim().isEmpty()) {
             gameManager.saveCurrentGame(saveName.trim());
         }
@@ -210,61 +220,58 @@ public class ScorePanel extends JPanel {
     private void openColorEditor() {
         if (colorEditorDialog == null) {
             JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            // --- A CORREÇÃO ESTÁ AQUI EMBAIXO: adicionei ", engine" ---
             colorEditorDialog = new ColorEditorDialog(parentFrame, themeManager, engine);
         }
         colorEditorDialog.setVisible(true);
+        updateThemeColors(themeManager);
+        themeSelector.setSelectedItem(themeManager.getCurrentThemeName());
     }
 
-    // --- MÉTODO ATUALIZADO ---
-    public void setMultiplayerMode(boolean isMultiplayer) {
-        pauseButton.setEnabled(!isMultiplayer);
-        saveGameButton.setVisible(!isMultiplayer); // Continua escondido no 2P (não faz sentido)
-
-        // --- CORREÇÃO AQUI ---
-        // Estes botões agora ficam visíveis em ambos os modos
-        toggleThemeButton.setVisible(true);
-        editCustomThemeButton.setVisible(true);
-        themeSelector.setVisible(true);
-        // --- FIM DA CORREÇÃO ---
-
-        if (isMultiplayer) {
-            backToMenuButton.setVisible(false);
-            restartButton.setText("Voltar ao Menu (R)");
-            for (ActionListener al : restartButton.getActionListeners()) {
-                restartButton.removeActionListener(al);
-            }
-            restartButton.addActionListener(e -> gameManager.returnToMenu());
-        } else {
-            backToMenuButton.setVisible(true);
-            restartButton.setText("Reiniciar (R)");
-            for (ActionListener al : restartButton.getActionListeners()) {
-                restartButton.removeActionListener(al);
-            }
-            restartButton.addActionListener(e -> engine.restartGame());
-        }
-    }
-
+    // --- UPDATE ---
     public void update() {
         if (engine == null) return;
+
+        boolean is1P = (gameManager.getCurrentState() == GameState.ONE_PLAYER);
+
         scoreLabel.setText("Pontos: " + engine.getScore());
         levelLabel.setText("Nível: " + engine.getLevel());
         linesLabel.setText("Linhas: " + engine.getLinesCleared());
         pauseButton.setText(engine.isPaused() ? "Continuar (P)" : "Pausar (P)");
+
+        saveGameButton.setVisible(is1P);
+        pauseButton.setVisible(is1P);
+        restartButton.setVisible(is1P);
+
         nextPiecePanel.repaint();
+        holdPiecePanel.repaint();
     }
 
     private void drawNextPiece(Graphics g) {
         if (engine == null) return;
         Tetromino next = engine.getNextPiece();
         if (next == null) return;
-        int[][] shape = next.getShape(0);
-        Color color = themeManager.getColor(next);
-        int panelWidth = nextPiecePanel.getWidth();
-        int panelHeight = nextPiecePanel.getHeight();
+        drawPieceInPanel(g, next, nextPiecePanel);
+    }
+
+    private void drawHeldPiece(Graphics g) {
+        if (engine == null) return;
+        Tetromino held = engine.getHeldPiece();
+        if (held == null) return;
+        drawPieceInPanel(g, held, holdPiecePanel);
+    }
+
+    private void drawPieceInPanel(Graphics g, Tetromino piece, JPanel panel) {
+        int[][] shape = piece.getShape(0);
+        Color color = themeManager.getColor(piece);
+
+        int panelWidth = panel.getWidth();
+        int panelHeight = panel.getHeight();
         int shapeWidth = shape[0].length * TILE_SIZE;
         int shapeHeight = shape.length * TILE_SIZE;
         int startX = (panelWidth - shapeWidth) / 2;
         int startY = (panelHeight - shapeHeight) / 2;
+
         for (int y = 0; y < shape.length; y++) {
             for (int x = 0; x < shape[y].length; x++) {
                 if (shape[y][x] != 0) {

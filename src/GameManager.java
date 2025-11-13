@@ -16,15 +16,20 @@ public class GameManager {
 
     private GameState currentState;
     private final Tetris gameWindow;
+
+    // Componentes de lógica
     private GameEngine player1Engine;
     private GameEngine player2Engine;
     private ThemeManager themeManager;
     private HighScoreManager highScoreManager;
     private SoundManager soundManager;
     private DatabaseManager databaseManager;
+
     private Timer gameTimer;
     private boolean matchOver = false;
     private Gson gson;
+
+    // Estado do Jogo Salvo
     private String loadedSaveName = null;
 
     // Nicknames 2P
@@ -39,8 +44,7 @@ public class GameManager {
         this.databaseManager = new DatabaseManager();
         this.gson = new Gson();
         this.soundManager = new SoundManager();
-        // A música só começa ao iniciar o jogo
-        soundManager.setVolume(0.8f);
+        soundManager.setVolume(0.8f); // Define o volume, mas não toca
     }
 
     public SoundManager getSoundManager() { return soundManager; }
@@ -58,7 +62,7 @@ public class GameManager {
         resetMatchState();
         player1Engine = createPlayerEngine();
         gameWindow.showGamePanel(player1Engine, null, themeManager);
-        soundManager.startDefaultMusic(); // Inicia a música
+        soundManager.startDefaultMusic(); // Toca a música
         player1Engine.startGame();
     }
 
@@ -80,7 +84,7 @@ public class GameManager {
         player2Engine = createPlayerEngine();
 
         gameWindow.showGamePanel(player1Engine, player2Engine, themeManager);
-        soundManager.startDefaultMusic(); // Inicia a música
+        soundManager.startDefaultMusic(); // Toca a música
         player1Engine.startGame();
         player2Engine.startGame();
     }
@@ -91,13 +95,15 @@ public class GameManager {
             if (jsonState == null) { throw new Exception("Save '" + saveName + "' não encontrado."); }
             GameStateData state = gson.fromJson(jsonState, GameStateData.class);
 
-            startNewOnePlayerGame();
-            this.loadedSaveName = saveName;
+            startNewOnePlayerGame(); // Prepara a engine (e chama resetMatchState)
+            this.loadedSaveName = saveName; // "Trackeia" o save
 
             player1Engine.stopGame();
             player1Engine.togglePause();
             player1Engine.loadState(state);
-            soundManager.startDefaultMusic(); // Inicia a música
+
+            soundManager.startDefaultMusic(); // Toca a música
+
             JOptionPane.showMessageDialog(gameWindow, "Jogo '" + saveName + "' carregado!\nPressione 'P' para despausar.", "Jogo Carregado", JOptionPane.INFORMATION_MESSAGE);
 
         } catch (Exception e) {
@@ -117,14 +123,16 @@ public class GameManager {
         gameWindow.showMenu();
     }
 
+    // --- ESTE MÉTODO ESTAVA VAZIO ---
     private GameEngine createPlayerEngine() {
         GameEngine engine = new GameEngine();
         engine.setThemeManager(themeManager);
         engine.setGameManager(this);
         engine.setSoundManager(this.soundManager);
-        return engine;
+        return engine; // <-- O 'return' que faltava
     }
 
+    // --- ESTE MÉTODO ESTAVA VAZIO ---
     public void playerLost(GameEngine lostEngine) {
         if (matchOver) return;
 
@@ -176,16 +184,19 @@ public class GameManager {
         }
     }
 
+    // --- ESTE MÉTODO ESTAVA VAZIO ---
     public void sendGarbage(GameEngine sender, int lineCount) {
         if (matchOver || currentState != GameState.TWO_PLAYER) { return; }
         GameEngine target = (sender == player1Engine) ? player2Engine : player1Engine;
         if (target != null) { target.addGarbageLines(lineCount); }
     }
 
+    // --- ESTE MÉTODO ESTAVA VAZIO (PARCIALMENTE) ---
     public List<String> getSavedGameNames() {
         return databaseManager.getSavedGameNames();
     }
 
+    // --- ESTE MÉTODO ESTAVA VAZIO ---
     public void saveCurrentGame(String saveName) {
         if (player1Engine == null || currentState != GameState.ONE_PLAYER) { return; }
         try {
@@ -202,43 +213,41 @@ public class GameManager {
         }
     }
 
-    // --- NOVO MÉTODO PARA O MODO CLARO/ESCURO ---
+    // --- ESTE MÉTODO ESTAVA VAZIO ---
     public void toggleUIMode() {
         themeManager.toggleUIMode();
         gameWindow.updateThemeColors(themeManager);
     }
 
-    // --- O MÉTODO CORRIGIDO ESTÁ AQUI ---
+    // --- handleKeyPress() (O MÉTODO QUE MUDAMOS) ---
     public void handleKeyPress(int keyCode) {
-        // Lógica de "Voltar ao Menu" do 2P
         if (currentState == GameState.TWO_PLAYER && keyCode == 82) { // 'R'
             returnToMenu();
             return;
         }
 
-        // Roteia para a Engine do Jogador 1 (Setas, P, R de 1P)
         if (currentState == GameState.ONE_PLAYER && player1Engine != null) {
             player1Engine.handleKeyPress(keyCode);
 
         } else if (currentState == GameState.TWO_PLAYER) {
 
-            // Roteia para a Engine do Jogador 1 (Setas)
+            // P1 (Setas, Espaço, 'C' para Hold)
             if (player1Engine != null &&
-                    (keyCode == 37 || keyCode == 39 || keyCode == 40 || keyCode == 38 || keyCode == 32)) {
+                    (keyCode == 37 || keyCode == 39 || keyCode == 40 || keyCode == 38 || keyCode == 32 || keyCode == 67)) {
                 player1Engine.handleKeyPress(keyCode);
             }
 
-            // Controla o Jogador 2 (WASD) diretamente
+            // P2 (WASD, 'Q' para Drop, 'E' para Hold)
             if (player2Engine != null) {
                 if (keyCode == 65) player2Engine.moveLeft();   // A
                 if (keyCode == 68) player2Engine.moveRight();  // D
                 if (keyCode == 83) player2Engine.moveDown();   // S
                 if (keyCode == 87) player2Engine.rotate();     // W
                 if (keyCode == 81) player2Engine.hardDrop();   // Q
+                if (keyCode == 69) player2Engine.holdPiece();  // E (Hold)
             }
         }
     }
-    // --- FIM DA CORREÇÃO ---
 
     public GameState getCurrentState() { return currentState; }
     public GameEngine getPlayer1Engine() { return player1Engine; }

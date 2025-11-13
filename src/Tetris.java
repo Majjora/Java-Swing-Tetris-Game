@@ -1,141 +1,133 @@
 // Em Tetris.java
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-import java.awt.BorderLayout;
-import java.awt.CardLayout;
-import java.awt.Color;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 
 public class Tetris extends JFrame {
 
-    public static final String MENU_PANEL = "menu";
-    public static final String GAME_PANEL = "game";
-
-    private final CardLayout cardLayout = new CardLayout();
-    private final JPanel mainPanel = new JPanel(cardLayout);
-
-    private final GameManager gameManager;
-    private MenuPanel menuPanel;
-
-    // --- NOVOS CAMPOS PARA GUARDAR REFERÊNCIAS ---
-    private JPanel p1WrapperPanel;
-    private ScorePanel p1Score;
-    private ScorePanel p2Score_p1;
-    private ScorePanel p2Score_p2;
-    // ---------------------------------------------
+    private JPanel mainPanel;
+    private CardLayout cardLayout;
+    private GameManager gameManager;
+    private GamePanel p1GamePanel; // Referência para atualização de cores
+    private GamePanel p2GamePanel; // Referência para atualização de cores
+    private ScorePanel p1ScorePanel; // Referência para atualização de cores
+    private ScorePanel p2ScorePanel; // Referência para atualização de cores
 
     public Tetris() {
-        setTitle("Criado por: Felipe");
+        setTitle("Tetris Java - OOP Project");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
 
+        // Inicializa o gerenciador do jogo
         gameManager = new GameManager(this);
-        this.menuPanel = new MenuPanel(gameManager);
 
-        mainPanel.add(menuPanel, MENU_PANEL);
+        // Configuração do CardLayout para trocar entre Menu e Jogo
+        cardLayout = new CardLayout();
+        mainPanel = new JPanel(cardLayout);
+
+        // Painel do Menu
+        MenuPanel menuPanel = new MenuPanel(gameManager);
+        mainPanel.add(menuPanel, "MENU");
 
         add(mainPanel);
+        pack();
+        setLocationRelativeTo(null);
+        setVisible(true);
 
-        addKeyListener(new KeyboardController(gameManager));
-        setFocusable(true);
-
-        addWindowListener(new java.awt.event.WindowAdapter() {
+        // Listener Global de Teclas (Redireciona tudo para o GameManager)
+        addKeyListener(new KeyAdapter() {
             @Override
-            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-                if (gameManager.getSoundManager() != null) {
-                    gameManager.getSoundManager().stopMusic();
-                }
+            public void keyPressed(KeyEvent e) {
+                gameManager.handleKeyPress(e.getKeyCode());
             }
         });
-
-        showMenu();
+        setFocusable(true);
     }
 
     public void showMenu() {
-        menuPanel.updateHighScore();
-        cardLayout.show(mainPanel, MENU_PANEL);
-        pack();
+        setSize(600, 700); // Tamanho do menu
+        cardLayout.show(mainPanel, "MENU");
         setLocationRelativeTo(null);
+
+        // Limpa referências antigas para economizar memória
+        p1GamePanel = null;
+        p2GamePanel = null;
+        p1ScorePanel = null;
+        p2ScorePanel = null;
     }
 
-    // --- showGamePanel() ATUALIZADO ---
     public void showGamePanel(GameEngine p1Engine, GameEngine p2Engine, ThemeManager themeManager) {
+        JPanel gameContainer = new JPanel();
 
-        // Limpa referências antigas
-        p1WrapperPanel = null;
-        p1Score = null;
-        p2Score_p1 = null;
-        p2Score_p2 = null;
-
-        JPanel gameContainer = new JPanel(new BorderLayout(10, 10));
-
+        // --- MODO 1 JOGADOR ---
         if (p2Engine == null) {
-            // --- MODO 1 JOGADOR ---
-            GamePanel p1Panel = new GamePanel(p1Engine, themeManager);
-            p1Score = new ScorePanel(p1Engine, themeManager, gameManager); // Salva referência
-            p1Engine.setPanels(p1Panel, p1Score);
-            p1Score.setMultiplayerMode(false);
+            gameContainer.setLayout(new BorderLayout());
 
-            p1WrapperPanel = new JPanel(); // Salva referência
-            p1WrapperPanel.setBackground(themeManager.getPanelBackground()); // Usa a cor do tema
-            p1WrapperPanel.add(p1Panel);
+            // Cria os painéis
+            p1GamePanel = new GamePanel(p1Engine, themeManager);
+            p1ScorePanel = new ScorePanel(p1Engine, themeManager, gameManager);
 
-            gameContainer.add(p1WrapperPanel, BorderLayout.CENTER);
-            gameContainer.add(p1Score, BorderLayout.EAST);
+            // Conecta Engine -> Paineis
+            p1Engine.setPanels(p1GamePanel, p1ScorePanel);
 
-        } else {
+            gameContainer.add(p1GamePanel, BorderLayout.CENTER);
+            gameContainer.add(p1ScorePanel, BorderLayout.EAST);
+
+            setSize(550, 700); // Tamanho para 1 Player
+
             // --- MODO 2 JOGADORES ---
-            JPanel p1Side = new JPanel(new BorderLayout());
-            GamePanel p1Panel = new GamePanel(p1Engine, themeManager);
-            p2Score_p1 = new ScorePanel(p1Engine, themeManager, gameManager); // Salva referência
-            p1Engine.setPanels(p1Panel, p2Score_p1);
-            p2Score_p1.setMultiplayerMode(true);
-            p1Side.add(p1Panel, BorderLayout.CENTER);
-            p1Side.add(p2Score_p1, BorderLayout.EAST);
+        } else {
+            gameContainer.setLayout(new GridLayout(1, 2, 10, 0)); // Grid com 2 colunas e espaço no meio
+            gameContainer.setBackground(Color.BLACK);
 
-            JPanel p2Side = new JPanel(new BorderLayout());
-            GamePanel p2Panel = new GamePanel(p2Engine, themeManager);
-            p2Score_p2 = new ScorePanel(p2Engine, themeManager, gameManager); // Salva referência
-            p2Engine.setPanels(p2Panel, p2Score_p2);
-            p2Score_p2.setMultiplayerMode(true);
-            p2Side.add(p2Panel, BorderLayout.CENTER);
-            p2Side.add(p2Score_p2, BorderLayout.EAST);
+            // --- Lado do Jogador 1 (Esquerda) ---
+            JPanel p1Container = new JPanel(new BorderLayout());
+            p1GamePanel = new GamePanel(p1Engine, themeManager);
+            p1ScorePanel = new ScorePanel(p1Engine, themeManager, gameManager);
+            p1Engine.setPanels(p1GamePanel, p1ScorePanel);
 
-            gameContainer.add(p2Side, BorderLayout.WEST);
-            gameContainer.add(p1Side, BorderLayout.EAST);
+            p1Container.add(p1GamePanel, BorderLayout.CENTER);
+            p1Container.add(p1ScorePanel, BorderLayout.EAST); // Score fica à direita do tabuleiro P1
+
+            // --- Lado do Jogador 2 (Direita) ---
+            JPanel p2Container = new JPanel(new BorderLayout());
+            p2GamePanel = new GamePanel(p2Engine, themeManager);
+            p2ScorePanel = new ScorePanel(p2Engine, themeManager, gameManager);
+            p2Engine.setPanels(p2GamePanel, p2ScorePanel);
+
+            p2Container.add(p2GamePanel, BorderLayout.CENTER);
+            p2Container.add(p2ScorePanel, BorderLayout.EAST); // Score fica à direita do tabuleiro P2
+
+            // Adiciona ao container principal
+            gameContainer.add(p2Container); // Jogador "WASD" (Player 2 visualmente na esquerda ou 1, tanto faz)
+            gameContainer.add(p1Container); // Jogador "Setas"
+
+            setSize(1100, 700); // Largura dobrada para 2 Players
         }
 
-        mainPanel.add(gameContainer, GAME_PANEL);
-        cardLayout.show(mainPanel, GAME_PANEL);
-
-        pack();
+        // Adiciona este novo jogo ao CardLayout
+        mainPanel.add(gameContainer, "GAME");
+        cardLayout.show(mainPanel, "GAME");
         setLocationRelativeTo(null);
+
+        // Garante que a janela pegue o foco para as teclas funcionarem
+        this.requestFocusInWindow();
     }
 
-    // --- NOVO MÉTODO PARA ATUALIZAR AS CORES ---
+    // Método auxiliar para atualizar cores da janela principal se necessário
     public void updateThemeColors(ThemeManager tm) {
-        Color bg = tm.getPanelBackground();
-
-        // Atualiza o wrapper do 1P
-        if (p1WrapperPanel != null) {
-            p1WrapperPanel.setBackground(bg);
-        }
-
-        // Atualiza os score panels
-        if (p1Score != null) {
-            p1Score.updateThemeColors(tm);
-        }
-        if (p2Score_p1 != null) {
-            p2Score_p1.updateThemeColors(tm);
-        }
-        if (p2Score_p2 != null) {
-            p2Score_p2.updateThemeColors(tm);
-        }
+        if (p1ScorePanel != null) p1ScorePanel.updateThemeColors(tm);
+        if (p2ScorePanel != null) p2ScorePanel.updateThemeColors(tm);
+        // GamePanels se atualizam sozinhos no repaint(), mas podemos forçar:
+        if (p1GamePanel != null) p1GamePanel.repaint();
+        if (p2GamePanel != null) p2GamePanel.repaint();
     }
 
     public static void main(String[] args) {
+        // Executa na Thread de Eventos do Swing (Boas práticas)
         SwingUtilities.invokeLater(() -> {
-            new Tetris().setVisible(true);
+            new Tetris();
         });
     }
 }

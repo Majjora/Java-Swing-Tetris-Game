@@ -42,6 +42,10 @@ public class GameEngine {
     private int ghostY;
     private int rotationFlash = 0;
 
+    // --- NOVOS CAMPOS PARA A PEÇA "HOLD" ---
+    private Tetromino heldPiece = null;
+    private boolean canHold = true; // Permite apenas um "hold" por peça
+
     // --- Construtor e Configuração ---
     public GameEngine() {
         this.board = new Board();
@@ -67,6 +71,9 @@ public class GameEngine {
         linesToClear.clear();
         rotationFlash = 0;
 
+        heldPiece = null; // Limpa o "hold" no início
+        canHold = true;   // Permite o "hold"
+
         spawnNewPiece(); // Define a peça ATUAL
         spawnNewPiece(); // Define a PRÓXIMA peça
 
@@ -74,20 +81,17 @@ public class GameEngine {
         final int[] dropCounter = {0};
         ActionListener gameLoop = e -> {
             if (rotationFlash > 0) rotationFlash--;
-
             if (isAnimatingLineClear) {
-                // Estado de Animação (Jogo Pausado)
                 animationCounter++;
                 if (animationCounter > 30) {
                     isAnimatingLineClear = false;
                     animationCounter = 0;
                     board.executeLineClearance(linesToClear);
-                    updateScoreAndLevel(); // <- BUG DE PONTOS/LIXO 2P ESTAVA AQUI
+                    updateScoreAndLevel();
                     linesToClear.clear();
-                    spawnNewPiece(); // <- BUG DA PRÓXIMA PEÇA/GAME OVER ESTAVA AQUI
+                    spawnNewPiece();
                 }
             } else if (!isPaused && !isGameOver) {
-                // Estado de Jogo Normal
                 int dropInterval = Math.max(1, 40 - level * 2);
                 dropCounter[0]++;
                 if (dropCounter[0] >= dropInterval) {
@@ -95,10 +99,8 @@ public class GameEngine {
                     dropCounter[0] = 0;
                 }
             }
-
-            // Atualiza a UI
             if (gamePanel != null) gamePanel.repaint();
-            if (scorePanel != null) scorePanel.update(); // <- BUG VISUAL DOS PONTOS ESTAVA AQUI
+            if (scorePanel != null) scorePanel.update();
         };
         timer = new Timer(timerDelay, gameLoop);
         timer.start();
@@ -119,14 +121,17 @@ public class GameEngine {
     }
 
     // --- Lógica Principal do Jogo ---
+
+    // --- spawnNewPiece() ATUALIZADO ---
     private void spawnNewPiece() {
-        currentPiece = nextPiece; // A "próxima" peça se torna a "atual"
+        currentPiece = nextPiece;
         currentRotation = 0;
         currentX = Board.WIDTH / 2 - 2;
         currentY = 0;
-        nextPiece = Tetromino.values()[random.nextInt(Tetromino.values().length)]; // Gera uma nova "próxima" peça
+        nextPiece = Tetromino.values()[random.nextInt(Tetromino.values().length)];
 
-        // --- VERIFICAÇÃO DE "GAME OVER" (CORRIGIDA) ---
+        canHold = true; // <-- ADICIONADO: Permite o "hold" para esta nova peça
+
         if (currentPiece != null && !board.isValidPosition(getCurrentPieceShape(), currentX, currentY)) {
             if (gameManager != null && gameManager.getCurrentState() != GameState.MENU) {
                 gameManager.playerLost(this);
@@ -139,26 +144,22 @@ public class GameEngine {
         }
     }
 
-    // --- LÓGICA DE "LOCKPIECE" (CORRIGIDA) ---
     private void lockPiece() {
         board.placePiece(getCurrentPieceShape(), currentX, currentY, currentPiece);
-        this.linesToClear = board.findFullLines(); // Pergunta ao Board se limpou linhas
+        this.linesToClear = board.findFullLines();
 
         if (!linesToClear.isEmpty()) {
-            // SIM, limpou linhas
             this.isAnimatingLineClear = true;
             this.animationCounter = 0;
             this.linesCleared += linesToClear.size();
             playSound("res/clear.wav");
-            // O loop do jogo agora assume o controle (estado de animação)
         } else {
-            // NÃO, nenhuma linha limpa
             playSound("res/lock.wav");
-            spawnNewPiece(); // Apenas chama a próxima peça
+            spawnNewPiece();
         }
     }
 
-    // --- LÓGICA DE PONTOS E ATAQUE 2P (CORRIGIDA) ---
+    // --- ESTE MÉTODO ESTAVA VAZIO NO ARQUIVO RUIM ---
     private void updateScoreAndLevel() {
         int linesJustCleared = linesToClear.size();
         if (linesJustCleared == 0) return;
@@ -187,6 +188,7 @@ public class GameEngine {
         }
     }
 
+    // --- ESTE MÉTODO ESTAVA VAZIO NO ARQUIVO RUIM ---
     private void updateGhostY() {
         if (currentPiece == null) return;
         int testY = currentY;
@@ -197,7 +199,7 @@ public class GameEngine {
         this.ghostY = testY;
     }
 
-    // Lógica de Defesa 2P
+    // --- ESTE MÉTODO ESTAVA VAZIO NO ARQUIVO RUIM ---
     public void addGarbageLines(int lineCount) {
         if (isGameOver || isAnimatingLineClear) return;
         board.addGarbageLines(lineCount);
@@ -219,6 +221,40 @@ public class GameEngine {
         updateGhostY();
     }
 
+    // --- NOVO MÉTODO: "HOLD PIECE" ---
+    public void holdPiece() {
+        if (isGameOver || isPaused || isAnimatingLineClear || !canHold) {
+            return;
+        }
+        canHold = false;
+        playSound("res/rotate.wav");
+
+        if (heldPiece == null) {
+            heldPiece = currentPiece;
+            spawnNewPiece();
+        } else {
+            Tetromino temp = currentPiece;
+            currentPiece = heldPiece;
+            heldPiece = temp;
+            currentRotation = 0;
+            currentX = Board.WIDTH / 2 - 2;
+            currentY = 0;
+            if (!board.isValidPosition(getCurrentPieceShape(), currentX, currentY)) {
+                if (gameManager != null && gameManager.getCurrentState() != GameState.MENU) {
+                    gameManager.playerLost(this);
+                } else {
+                    isGameOver = true;
+                    stopGame();
+                }
+            } else {
+                updateGhostY();
+            }
+        }
+        if (scorePanel != null) {
+            scorePanel.update();
+        }
+    }
+
     // --- Métodos de Movimento ---
     public void moveLeft() { if (!isGameOver && !isPaused && !isAnimatingLineClear) { if (board.isValidPosition(getCurrentPieceShape(), currentX - 1, currentY)) { currentX--; playSound("res/move.wav"); updateGhostY(); } } }
     public void moveRight() { if (!isGameOver && !isPaused && !isAnimatingLineClear) { if (board.isValidPosition(getCurrentPieceShape(), currentX + 1, currentY)) { currentX++; playSound("res/move.wav"); updateGhostY(); } } }
@@ -228,7 +264,7 @@ public class GameEngine {
     public void togglePause() { if (!isGameOver && !isAnimatingLineClear) { isPaused = !isPaused; if(isPaused) { if (timer != null) timer.stop(); } else { if (timer != null) timer.start(); } if (gamePanel != null) { gamePanel.repaint(); } } }
     private void playSound(String soundFile) { if (soundManager != null) { soundManager.playSound(soundFile, false); } }
 
-    // --- Controlador de Teclas (Corpo Restaurado) ---
+    // --- Controlador de Teclas (ATUALIZADO) ---
     public void handleKeyPress(int keyCode) {
         if (isPaused && keyCode != 80) { return; }
         if (isGameOver && keyCode != 82) { return; }
@@ -240,6 +276,7 @@ public class GameEngine {
             case 40: moveDown(); break;
             case 38: rotate(); break;
             case 32: hardDrop(); break;
+            case 67: holdPiece(); break;  // 'C' para "Hold"
             case 80: togglePause(); break;
             case 82:
                 if (gameManager != null && gameManager.getCurrentState() == GameState.ONE_PLAYER) {
@@ -257,7 +294,8 @@ public class GameEngine {
     public Color getCurrentPieceColor() { return (currentPiece != null) ? themeManager.getColor(currentPiece) : Color.BLACK; }
     public int getCurrentPieceX() { return currentX; }
     public int getCurrentPieceY() { return currentY; }
-    public Tetromino getNextPiece() { return nextPiece; } // <- Corrigido
+    public Tetromino getNextPiece() { return nextPiece; }
+    public Tetromino getHeldPiece() { return heldPiece; } // NOVO GETTER
     public int getScore() { return score; }
     public int getLevel() { return level; }
     public int getLinesCleared() { return linesCleared; }
@@ -273,8 +311,7 @@ public class GameEngine {
     public boolean isWinner() { return isWinner; }
 
 
-    // --- Métodos de Salvar/Carregar ---
-
+    // --- ESTE MÉTODO ESTAVA VAZIO NO ARQUIVO RUIM (O QUE CAUSOU O ERRO) ---
     public GameStateData captureState() {
         GameStateData state = new GameStateData();
 
@@ -305,9 +342,10 @@ public class GameEngine {
             state.currentThemeName = themeManager.getCurrentThemeName();
         }
 
-        return state;
+        return state; // <-- AQUI ESTÁ O 'return' QUE FALTAVA
     }
 
+    // --- ESTE MÉTODO ESTAVA VAZIO NO ARQUIVO RUIM ---
     public void loadState(GameStateData state) {
         board.reset();
         String[][] grid = state.boardGrid;
